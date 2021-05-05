@@ -130,6 +130,53 @@ def normalized(v):
 def lerp(v1, v2, t):
     return (1-t)*v1 + t*v2
 
+def exp(rv):
+    th = l2norm(rv)
+    u = normalized(rv)
+    cos = np.cos(th)
+    sin = np.sin(th)
+    return np.array([[cos+u[0]*u[0]*(1-cos), u[0]*u[1]*(1-cos)-u[2]*sin, u[0]*u[2]*(1-cos)+u[1]*sin],
+                     [u[1]*u[0]*(1-cos)+u[2]*sin, cos+u[1]*u[1]*(1-cos), u[1]*u[2]*(1-cos)-u[0]*sin],
+                     [u[2]*u[0]*(1-cos)-u[1]*sin, u[2]*u[1]*(1-cos)+u[0]*sin, cos+u[2]*u[2]*(1-cos)]])
+
+def log(R):
+    tr = R[0,0]+R[1,1]+R[2,2]
+    if tr == 3:
+        w=np.array([0,0,0])
+        th=0
+    elif tr==-1:
+        th=np.pi
+        v1 = np.array([R[0,2],R[1,2],R[2,2]+1]/np.sqrt(2*(1+R[2,2])))
+        v2 = np.array([R[0,1],R[1,1]+1,R[2,1]]/np.sqrt(2*(1+R[1,1])))
+        v3 = np.array([R[0,0]+1,R[1,0],R[2,0]]/np.sqrt(2*(1+R[0,0])))
+        if v1 != [0,0,0]:
+            w=v1
+        elif v2 != [0,0,0]:
+            w=v2
+        elif v3 != [0,0,0]:
+            w=v3
+    else:
+        th = np.arccos((tr-1)/2)
+        w = np.array([R[2,1]-R[1,2],R[0,2]-R[2,0],R[1,0]-R[0,1]])/(2*np.sin(th))
+
+    w=normalized(w)
+    return w*th
+
+def slerp(R1,R2,t):
+    if t==0:
+        return R1
+    return R1 @ exp(t*log((R1.T)@R2))
+
+def interpolateRotVec(rv1,rv2,t):
+    return exp(lerp(rv1,rv2,t))
+
+def interpolateZYXEuler(euler1,euler2,t):
+    return ZYXEulerToRotMat(lerp(euler1,euler2,t))
+
+def interpolateRotMat(R1,R2,t):
+    return lerp(R1,R2,t)
+    
+
 # euler[0]: zang
 # euler[1]: yang
 # euler[2]: xang
