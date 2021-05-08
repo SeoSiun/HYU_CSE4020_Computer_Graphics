@@ -75,7 +75,6 @@ def render():
         glEnable(GL_LIGHT1)
         glEnable(GL_LIGHT2)
         glEnable(GL_LIGHT3)
-        glEnable(GL_LIGHT4)
 
         glPushMatrix()
         lightPos = (10.,10.,0.,0.)
@@ -111,36 +110,14 @@ def render():
         glPopMatrix()
 
         glPushMatrix()
-        lightPos = (0.,-10,0.,1.)
+        lightPos = (10.,10.,10.,1.)
         glLightfv(GL_LIGHT3,GL_POSITION,lightPos)
 
-        lightColor = (1.,1.,0.,1.)
-        ambientLightColor = (.1,.1,.0,1.)
+        lightColor = (1.,1.,1.,1.)
+        ambientLightColor = (.1,.1,.1,1.)
         glLightfv(GL_LIGHT3,GL_DIFFUSE, lightColor)
         glLightfv(GL_LIGHT3,GL_SPECULAR, lightColor)
         glLightfv(GL_LIGHT3,GL_AMBIENT, ambientLightColor)
-        glPopMatrix()
-
-        glPushMatrix()
-        lightPos = (0.,-10,0.,1.)
-        glLightfv(GL_LIGHT3,GL_POSITION,lightPos)
-
-        lightColor = (1.,1.,0.,1.)
-        ambientLightColor = (.1,.1,.0,1.)
-        glLightfv(GL_LIGHT3,GL_DIFFUSE, lightColor)
-        glLightfv(GL_LIGHT3,GL_SPECULAR, lightColor)
-        glLightfv(GL_LIGHT3,GL_AMBIENT, ambientLightColor)
-        glPopMatrix()
-
-        glPushMatrix()
-        lightPos = (10.,10,10.,1.)
-        glLightfv(GL_LIGHT3,GL_POSITION,lightPos)
-
-        lightColor = (.8,.8,.8,1.)
-        ambientLightColor = (.08,.08,.08,1.)
-        glLightfv(GL_LIGHT4,GL_DIFFUSE, lightColor)
-        glLightfv(GL_LIGHT4,GL_SPECULAR, lightColor)
-        glLightfv(GL_LIGHT4,GL_AMBIENT, ambientLightColor)
         glPopMatrix()
 
 
@@ -159,49 +136,56 @@ def render():
         
     elif not isSingleMesh:
         t=glfw.get_time()
-
-        glPushMatrix()
-        glTranslatef(0,.5,2.5*np.sin(t/3))
-        direction=np.cos(t/3)/abs(np.cos(t/3))
         
-        objectColor = (1.,.25,0.,1.)
-        specularObjectColor = (.1,.025,0.,1.)
+#body.obj
+        # body
+        glPushMatrix()
+        glTranslatef(0,.0,2*np.sin(t/2))
+        direction=np.cos(t/2)/abs(np.cos(t/2))
+
+        objectColor = (0.,0.,.6,1.)
+        specularObjectColor = (0.,0.,.06,1.)
         glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE,objectColor)
         glMaterialfv(GL_FRONT, GL_SHININESS,10)
         glMaterialfv(GL_FRONT, GL_SPECULAR,specularObjectColor)
-
+        
         glPushMatrix()
-        glColor3ub(255,80,0)
+        glColor3ub(0,0,150)
         if not isForce:
-            draw(harr[0])
-        else:
-            draw(fharr[0])
-        glPopMatrix()
-
-        objectColor = (1.,.25,.3,1.)
-        specularObjectColor = (.1,.025,.03,1.)
-        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE,objectColor)
-        glMaterialfv(GL_FRONT, GL_SHININESS,10)
-        glMaterialfv(GL_FRONT, GL_SPECULAR,specularObjectColor)
-
-        glPushMatrix()
-        glTranslatef(0.,-0.3,0.45)
-        glRotatef(t*(180/np.pi),direction,0,0)
-        glTranslatef(0.,0.3,-0.45)
-        glColor3ub(255,80,100)
-        if not isForce:
-            draw(harr[1])
+            draw(harr[5])
             draw(harr[4])
         else:
-            draw(fharr[1])
+            draw(fharr[5])
             draw(fharr[4])
         glPopMatrix()
 
+        objectColor = (.5,.5,1.,1.)
+        specularObjectColor = (.05,.05,.1,1.)
+        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE,objectColor)
+        glMaterialfv(GL_FRONT, GL_SHININESS,10)
+        glMaterialfv(GL_FRONT, GL_SPECULAR,specularObjectColor)
+
+        #back wheel
         glPushMatrix()
-        glTranslatef(0.,-0.3,-0.45)
+        glColor3ub(130,130,255)
+        glTranslatef(0.,-.08,-0.7)
         glRotatef(t*(180/np.pi),direction,0,0)
-        glTranslatef(0.,0.3,0.45)
-        glColor3ub(255,80,100)
+        glTranslatef(0.,.08,0.7)
+        glColor3ub(200,200,255)
+        if not isForce:
+            draw(harr[0])
+            draw(harr[1])
+        else:
+            draw(fharr[0])
+            draw(fharr[1])
+        glPopMatrix()
+
+        #front wheel
+        glPushMatrix()
+        glTranslatef(0.,-.02,0.8)
+        glRotatef(t*(180/np.pi),direction,0,0)
+        glTranslatef(0.,.02,-0.8)
+        glColor3ub(200,200,255)
         if not isForce:
             draw(harr[2])
             draw(harr[3])
@@ -210,59 +194,88 @@ def render():
             draw(fharr[3])
         glPopMatrix()
 
-        glPushMatrix()
-        glRotatef(t*(50/np.pi),0,1,0)
 
-        objectColor = (1.,.5,0.,1.)
-        specularObjectColor = (.1,.05,0.,1.)
+#circle.obj
+        #circle
+        glPushMatrix()
+        glTranslatef(0.,1.42,-.1)
+        glRotatef(t*(30/np.pi),0,1,0)
+
+        objectColor = (.25,.25,1.,1.)
+        specularObjectColor = (.025,.025,.1,1.)
         glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE,objectColor)
         glMaterialfv(GL_FRONT, GL_SHININESS,10)
         glMaterialfv(GL_FRONT, GL_SPECULAR,specularObjectColor)
 
         glPushMatrix()
-        glColor3ub(255,120,0)
-        if not isForce:
-            draw(harr[5])
-        else:
-            draw(fharr[5])
-        glPopMatrix()
-
-        glPushMatrix()
-        glRotatef(20*np.sin(t/2),-1,0,0)
-
-        objectColor = (1.,.7,0.,1.)
-        specularObjectColor = (.1,.07,0.,1.)
-        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE,objectColor)
-        glMaterialfv(GL_FRONT, GL_SHININESS,10)
-        glMaterialfv(GL_FRONT, GL_SPECULAR,specularObjectColor)
-
-        glPushMatrix()
-        glColor3ub(255,200,0)
+        glColor3ub(80,80,255)
         if not isForce:
             draw(harr[6])
         else:
             draw(fharr[6])
         glPopMatrix()
 
+#fork.obj
+        #first
         glPushMatrix()
-        glTranslatef(0,1.1,0.)
-        glRotatef(25*np.sin(t/2),1,0,0)
-        glTranslatef(0,-1.1,0.)
+        glTranslatef(0.,.15,0.)
+        glRotatef(20*np.sin(t/2),0,0,1)
+
+        objectColor = (.13,.13,1.,1.)
+        specularObjectColor = (.013,.013,.1,1.)
+        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE,objectColor)
+        glMaterialfv(GL_FRONT, GL_SHININESS,10)
+        glMaterialfv(GL_FRONT, GL_SPECULAR,specularObjectColor)
+
+        glPushMatrix()
+        glColor3ub(30,30,255)
+        if not isForce:
+            draw(harr[9])
+        else:
+            draw(fharr[9])
+        glPopMatrix()
+
+        #second
+        glPushMatrix()
+        glTranslatef(-.64,.33,0)
+        glRotatef(10*np.sin(t/3),0,0,1)
+        glTranslatef(.64,-.33,0)
         
-        objectColor = (1.,1.,0.,1.)
-        specularObjectColor = (.1,.1,0.,1.)
+        objectColor = (0.,0.,1.,1.)
+        specularObjectColor = (0.,0.,.1,1.)
         glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE,objectColor)
         glMaterialfv(GL_FRONT, GL_SHININESS,10)
         glMaterialfv(GL_FRONT, GL_SPECULAR,specularObjectColor)
         
         glPushMatrix()
-        glColor3ub(255,255,0)
+        glColor3ub(0,0,255)
+        if not isForce:
+            draw(harr[8])
+        else:
+            draw(fharr[8])
+        glPopMatrix()
+
+        #third
+        glPushMatrix()
+        glTranslatef(-1.6,.22,0.)
+        glRotatef(15*np.sin(t/3),0,0,1)
+        glTranslatef(1.6,-.22,0.)
+        
+        objectColor = (0.,.25,1.,1.)
+        specularObjectColor = (.0,.025,.1,1.)
+        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE,objectColor)
+        glMaterialfv(GL_FRONT, GL_SHININESS,10)
+        glMaterialfv(GL_FRONT, GL_SPECULAR,specularObjectColor)
+        
+        glPushMatrix()
+        glColor3ub(0,80,255)
         if not isForce:
             draw(harr[7])
         else:
             draw(fharr[7])
         glPopMatrix()
-        
+
+        glPopMatrix()
         glPopMatrix()
         glPopMatrix()
         glPopMatrix()
@@ -286,7 +299,7 @@ def key_callback(window, key, scancode, action, modes):
             isOrtho = not isOrtho
     if key==glfw.KEY_H:
         if action == glfw.PRESS:
-            isSingleMesh = not isSingleMesh
+            isSingleMesh = False
     if key==glfw.KEY_Z:
         if action == glfw.PRESS:
             isWireFrame = not isWireFrame
@@ -394,16 +407,28 @@ def drop_callback(window, paths):
 
 
 def initHierarchical():
-    global harr,fharr 
+    global harr,fharr
     harr=[]
+    fharr=[]
+    f=open("body.obj")
+    parseOBJ(f)
+    f.close()
+    f=open("circle.obj")
+    parseOBJ(f)
+    f.close()
+    f=open("fork.obj")
+    parseOBJ(f)
+    f.close()
+
+
+def parseOBJ(f):
+    global harr,fharr 
     vertex=[]
     normal=[]
     norm = []
     pairs=[]
-    fharr=[]
     vertexCnt=0
     
-    f=open("car.obj")
     while True:
         line = f.readline()
         if not line: break
@@ -434,8 +459,8 @@ def initHierarchical():
     varr,fvarr=makeVarr(normal,vertex,pairs,averageNorm(norm))                
     harr.append(np.array(varr,'float32'))
     fharr.append(np.array(fvarr,'float32'))
-    f.close()
 
+    
 def makeVarr(normal,vertex,pairs,avrNorm):
     varr=[]
     fvarr=[]
