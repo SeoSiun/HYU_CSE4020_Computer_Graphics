@@ -35,7 +35,7 @@ def render():
     global tpoint
     global elev, azim
     global v, u
-    global harr,varr,fvarr,fharr
+    global varr,iarr,vertex,avrNorm,harr, hiarr,hvarr,havrNorm
     
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
     glEnable(GL_DEPTH_TEST)
@@ -132,7 +132,7 @@ def render():
         if not isForce:
             draw(varr)
         else:
-            draw(fvarr)
+            drawSmooth(vertex,avrNorm,iarr)
         
     elif not isSingleMesh:
         t=glfw.get_time()
@@ -143,20 +143,18 @@ def render():
         glTranslatef(0,.0,2*np.sin(t/2))
         direction=np.cos(t/2)/abs(np.cos(t/2))
 
-        objectColor = (0.,0.,.6,1.)
-        specularObjectColor = (0.,0.,.06,1.)
+        objectColor = (.7,.7,.7,1.)
+        specularObjectColor = (.07,.07,.07,1.)
         glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE,objectColor)
         glMaterialfv(GL_FRONT, GL_SHININESS,10)
         glMaterialfv(GL_FRONT, GL_SPECULAR,specularObjectColor)
         
         glPushMatrix()
-        glColor3ub(0,0,150)
+        glColor3ub(180,180,180)
         if not isForce:
-            draw(harr[5])
             draw(harr[4])
         else:
-            draw(fharr[5])
-            draw(fharr[4])
+            drawSmooth(hvarr[0],havrNorm[0],hiarr[4])
         glPopMatrix()
 
         objectColor = (.5,.5,1.,1.)
@@ -167,17 +165,16 @@ def render():
 
         #back wheel
         glPushMatrix()
-        glColor3ub(130,130,255)
         glTranslatef(0.,-.08,-0.7)
         glRotatef(t*(180/np.pi),direction,0,0)
         glTranslatef(0.,.08,0.7)
-        glColor3ub(200,200,255)
+        glColor3ub(130,130,255)
         if not isForce:
             draw(harr[0])
             draw(harr[1])
         else:
-            draw(fharr[0])
-            draw(fharr[1])
+            drawSmooth(hvarr[0],havrNorm[0],hiarr[0])
+            drawSmooth(hvarr[0],havrNorm[0],hiarr[1])
         glPopMatrix()
 
         #front wheel
@@ -185,13 +182,13 @@ def render():
         glTranslatef(0.,-.02,0.8)
         glRotatef(t*(180/np.pi),direction,0,0)
         glTranslatef(0.,.02,-0.8)
-        glColor3ub(200,200,255)
+        glColor3ub(130,130,255)
         if not isForce:
             draw(harr[2])
             draw(harr[3])
         else:
-            draw(fharr[2])
-            draw(fharr[3])
+            drawSmooth(hvarr[0],havrNorm[0],hiarr[2])
+            drawSmooth(hvarr[0],havrNorm[0],hiarr[3])
         glPopMatrix()
 
 
@@ -199,82 +196,65 @@ def render():
         #circle
         glPushMatrix()
         glTranslatef(0.,1.42,-.1)
-        glRotatef(t*(30/np.pi),0,1,0)
+        glRotatef(90+30*np.sin(t/3),0,1,0)
 
-        objectColor = (.25,.25,1.,1.)
-        specularObjectColor = (.025,.025,.1,1.)
+        objectColor = (.25,.25,.6,1.)
+        specularObjectColor = (.025,.025,.06,1.)
         glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE,objectColor)
         glMaterialfv(GL_FRONT, GL_SHININESS,10)
         glMaterialfv(GL_FRONT, GL_SPECULAR,specularObjectColor)
 
         glPushMatrix()
-        glColor3ub(80,80,255)
+        glColor3ub(80,80,150)
         if not isForce:
-            draw(harr[6])
+            draw(harr[5])
         else:
-            draw(fharr[6])
+            drawSmooth(hvarr[1],havrNorm[1],hiarr[5])
         glPopMatrix()
 
 #fork.obj
         #first
         glPushMatrix()
-        glTranslatef(0.,.15,0.)
-        glRotatef(20*np.sin(t/2),0,0,1)
-
-        objectColor = (.13,.13,1.,1.)
-        specularObjectColor = (.013,.013,.1,1.)
+        glColor3ub(130,130,255)
+        
+        objectColor = (.53,.53,1.,1.)
+        specularObjectColor = (.053,.053,.1,1.)
         glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE,objectColor)
         glMaterialfv(GL_FRONT, GL_SHININESS,10)
         glMaterialfv(GL_FRONT, GL_SPECULAR,specularObjectColor)
-
+        
         glPushMatrix()
-        glColor3ub(30,30,255)
+        glTranslatef(0.,.15,0.)
+        glRotatef(10*np.sin(t/2),0,0,1)
+
         if not isForce:
-            draw(harr[9])
+            draw(harr[8])
         else:
-            draw(fharr[9])
-        glPopMatrix()
+            drawSmooth(hvarr[2],havrNorm[2],hiarr[8])
 
         #second
         glPushMatrix()
         glTranslatef(-.64,.33,0)
-        glRotatef(10*np.sin(t/3),0,0,1)
+        glRotatef(20*np.sin(t/3),0,0,1)
         glTranslatef(.64,-.33,0)
-        
-        objectColor = (0.,0.,1.,1.)
-        specularObjectColor = (0.,0.,.1,1.)
-        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE,objectColor)
-        glMaterialfv(GL_FRONT, GL_SHININESS,10)
-        glMaterialfv(GL_FRONT, GL_SPECULAR,specularObjectColor)
-        
-        glPushMatrix()
-        glColor3ub(0,0,255)
-        if not isForce:
-            draw(harr[8])
-        else:
-            draw(fharr[8])
-        glPopMatrix()
 
-        #third
-        glPushMatrix()
-        glTranslatef(-1.6,.22,0.)
-        glRotatef(15*np.sin(t/3),0,0,1)
-        glTranslatef(1.6,-.22,0.)
-        
-        objectColor = (0.,.25,1.,1.)
-        specularObjectColor = (.0,.025,.1,1.)
-        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE,objectColor)
-        glMaterialfv(GL_FRONT, GL_SHININESS,10)
-        glMaterialfv(GL_FRONT, GL_SPECULAR,specularObjectColor)
-        
-        glPushMatrix()
-        glColor3ub(0,80,255)
         if not isForce:
             draw(harr[7])
         else:
-            draw(fharr[7])
-        glPopMatrix()
+            drawSmooth(hvarr[2],havrNorm[2],hiarr[7])
 
+        #bucket
+        glPushMatrix()
+        glTranslatef(-1.6,.22,0.)
+        glRotatef(20*np.sin(t/3),0,0,1)
+        glTranslatef(1.6,-.22,0.)
+        
+        if not isForce:
+            draw(harr[6])
+        else:
+            drawSmooth(hvarr[2],havrNorm[2],hiarr[6])
+
+        glPopMatrix()
         glPopMatrix()
         glPopMatrix()
         glPopMatrix()
@@ -290,7 +270,13 @@ def draw(varr):
                     ctypes.c_void_p(varr.ctypes.data + 3*varr.itemsize))
     glDrawArrays(GL_TRIANGLES,0,int(varr.size/6))
 
-
+def drawSmooth(varr,avrNorm,iarr):
+    glEnableClientState(GL_VERTEX_ARRAY)
+    glEnableClientState(GL_NORMAL_ARRAY)
+    glVertexPointer(3,GL_FLOAT, 3*varr.itemsize, varr)
+    glNormalPointer(GL_FLOAT, 3*avrNorm.itemsize, avrNorm)
+    glDrawElements(GL_TRIANGLES, iarr.size, GL_UNSIGNED_INT, iarr)
+    
 def key_callback(window, key, scancode, action, modes):
     global isOrtho,isSingleMesh,isWireFrame, isForce
     
@@ -352,7 +338,7 @@ def scroll_callback(window, xoffset, yoffset):
     d -= yoffset
 
 def drop_callback(window, paths):
-    global varr,isSingleMesh,fvarr 
+    global varr,isSingleMesh,iarr,vertex,avrNorm
     vertex = []
     normal = []
     norm = []
@@ -373,7 +359,7 @@ def drop_callback(window, paths):
         s = line.split()
         if s[0] == 'v':
             vertexCnt+=1
-            vertex.append((float(s[1]),float(s[2]),float(s[3])))
+            vertex.append(np.array((float(s[1]),float(s[2]),float(s[3]))))
         elif s[0] == 'vn':
             normal.append((float(s[1]),float(s[2]),float(s[3])))
         elif s[0] == 'f':
@@ -385,7 +371,6 @@ def drop_callback(window, paths):
             for i in range(1,len(s)):
                 v,t,n = s[i].split('/')
                 pair.append((int(n)-1,int(v)-1))
-                norm[int(v)-1].append(normal[int(n)-1])
             pairs.append(np.array(pair))
             if len(s)-1==3:
                 face3+=1
@@ -395,9 +380,13 @@ def drop_callback(window, paths):
                 faceMoreThan4+=1
     f.close()
 
-    varr,fvarr=makeVarr(normal,vertex,pairs,averageNorm(norm))                     
+    
+    varr,iarr,norm=makeVarr(normal,vertex,pairs,norm)
+    avrNorm = averageNorm(norm)
     varr = np.array(varr,'float32')
-    fvarr = np.array(fvarr,'float32')
+    iarr = np.array(iarr,'float32')
+    vertex=np.array(vertex,'float32')
+    avrNorm=np.array(avrNorm,'float32')
     
     print("Total number of faces : ",face)
     print("Number of faces with 3 vertices : ",face3)
@@ -407,22 +396,34 @@ def drop_callback(window, paths):
 
 
 def initHierarchical():
-    global harr,fharr
+    global harr,fharr,hiarr,hvarr,havrNorm
     harr=[]
     fharr=[]
+    hiarr=[]
+    hvarr=[]
+    havrNorm=[]
+
     f=open("body.obj")
-    parseOBJ(f)
+    v,n=parseOBJ(f)
+    hvarr.append(v)
+    havrNorm.append(n)
     f.close()
+    
     f=open("circle.obj")
-    parseOBJ(f)
+    v,n=parseOBJ(f)
+    hvarr.append(v)
+    havrNorm.append(n)
     f.close()
+    
     f=open("fork.obj")
-    parseOBJ(f)
+    v,n=parseOBJ(f)
+    hvarr.append(v)
+    havrNorm.append(n)
     f.close()
 
 
 def parseOBJ(f):
-    global harr,fharr 
+    global harr, hiarr
     vertex=[]
     normal=[]
     norm = []
@@ -436,13 +437,13 @@ def parseOBJ(f):
         s = line.split()
 
         if s[0] == 'o' and len(pairs)!=0:
-            varr,fvarr=makeVarr(normal,vertex,pairs,averageNorm(norm))       
+            varr,iarr,norm=makeVarr(normal,vertex,pairs,norm)
             harr.append(np.array(varr,'float32'))
-            fharr.append(np.array(fvarr,'float32'))
+            hiarr.append(np.array(iarr,'float32'))
             pairs=[]
         elif s[0] == 'v':
             vertexCnt+=1
-            vertex.append((float(s[1]),float(s[2]),float(s[3])))
+            vertex.append(np.array((float(s[1]),float(s[2]),float(s[3]))))
         elif s[0] == 'vn':
             normal.append((float(s[1]),float(s[2]),float(s[3])))
         elif s[0] == 'f':
@@ -450,20 +451,25 @@ def parseOBJ(f):
                 norm.append([])
             vertexCnt=0
             pair = []
+            tmp=[]
             for i in range(1,len(s)):
                 v,t,n = s[i].split('/')
                 pair.append((int(n)-1,int(v)-1))
-                norm[int(v)-1].append(normal[int(n)-1])
             pairs.append(np.array(pair))
 
-    varr,fvarr=makeVarr(normal,vertex,pairs,averageNorm(norm))                
+    varr,iarr,norm=makeVarr(normal,vertex,pairs,norm)
+    havrNorm = averageNorm(norm)
     harr.append(np.array(varr,'float32'))
-    fharr.append(np.array(fvarr,'float32'))
+    hiarr.append(np.array(iarr,'float32'))
+    return np.array(vertex,'float32'),np.array(havrNorm,'float32')
 
+def normalized(v):
+    l = np.sqrt(np.dot(v, v))
+    return (1/l) * np.array(v)
     
-def makeVarr(normal,vertex,pairs,avrNorm):
+def makeVarr(normal,vertex,pairs,norm):
     varr=[]
-    fvarr=[]
+    iarr=[]
     for pair in pairs:
         for i in range(1,len(pair)-1):
             varr.append(normal[pair[0,0]])
@@ -472,25 +478,36 @@ def makeVarr(normal,vertex,pairs,avrNorm):
             varr.append(vertex[pair[i,1]])
             varr.append(normal[pair[i+1,0]])
             varr.append(vertex[pair[i+1,1]])
-                   
-            fvarr.append(avrNorm[pair[0,1]])
-            fvarr.append(vertex[pair[0,1]])
-            fvarr.append(avrNorm[pair[i,1]])
-            fvarr.append(vertex[pair[i,1]])
-            fvarr.append(avrNorm[pair[i+1,1]])
-            fvarr.append(vertex[pair[i+1,1]])
-    return varr,fvarr
+
+            iarr.append(pair[0,1])
+            iarr.append(pair[i,1])
+            iarr.append(pair[i+1,1])
+
+            v1 = vertex[pair[i,1]]-vertex[pair[0,1]]
+            v2 = vertex[pair[i+1,1]]-vertex[pair[0,1]]
+            tmp=[0,0,0]
+            tmp[0]=v1[1]*v2[2]-v1[2]*v2[1]
+            tmp[1]=v1[2]*v2[0]-v1[0]*v2[2]
+            tmp[2]=v1[0]*v2[1]-v1[1]*v2[0]
+            tmp =normalized(tmp)
+            
+            norm[pair[0,1]].append(tmp)
+            norm[pair[i,1]].append(tmp)
+            norm[pair[i+1,1]].append(tmp)
+            
+    return varr,iarr,norm
 
 def averageNorm(norm):
     avrNorm=[]
     for i in range(0,len(norm)):
         tmp=[0,0,0]
         for j in range(0,len(norm[i])):
-            tmp[0] += norm[i][j][0]/len(norm[i])
-            tmp[1] += norm[i][j][1]/len(norm[i])
-            tmp[2] += norm[i][j][2]/len(norm[i])
-        avrNorm.append(tmp)
+            tmp[0] += norm[i][j][0]
+            tmp[1] += norm[i][j][1]
+            tmp[2] += norm[i][j][2]
+        avrNorm.append(normalized(tmp))
     return avrNorm
+    
 
 def main():
     global leftPressed, rightPressed
