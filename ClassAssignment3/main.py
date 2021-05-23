@@ -12,14 +12,15 @@ class Joint:
         self.parent = parent
         self.chanValue = []
         if parent!=None:
-            self.globalPos = parent.getGlobalPos() + self.offset
+            self.globalPos = self.parent.getGlobalPos() + self.offset
         else: self.globalPos = self.offset
+        self.matrix=[]
         
     def addChild(self,child):
         self.child.append(child)
 
-    def setChanValue(self,value):
-        self.cahnValue = value
+    def addChanValue(self,value):
+        self.chanValue.append(value)
 
     def getParent(self):
         return self.parent
@@ -36,6 +37,49 @@ class Joint:
     def getGlobalPos(self):
         return self.globalPos
 
+    def setMat(self,fnum):
+        for i in range(0,fnum):
+            if self.parent!=None:
+                self.matrix.append(self.parent.matrix[i] @ self.getMat(i))
+            else: self.matrix.append(self.getMat(i))
+
+    def getMat(self,f):
+        T=np.identity(4)
+        R=np.identity(3)
+
+        for i,chan in enumerate(self.channel):
+            value = self.chanValue[f][i]
+            if chan=="XPOSITION":
+                T[0,3]=value
+            elif chan=="YPOSITION":
+                T[1,3]=value
+            elif chan=="ZPOSITION":
+                T[2,3]=value
+            elif chan=="XROTATION":
+                value = np.radians(value)
+                R = R @ np.array([[1,0,0],
+                                 [0, np.cos(value), -np.sin(value)],
+                                 [0, np.sin(value), np.cos(value)]])
+            elif chan=="YROTATION":
+                value = np.radians(value)
+                R = R @ np.array([[np.cos(value), 0, np.sin(value)],
+                                  [0,1,0],
+                                  [-np.sin(value), 0, np.cos(value)]])
+            elif chan=="ZROTATION":
+                value = np.radians(value)
+                R = R @ np.array([[np.cos(value), -np.sin(value), 0],
+                                  [np.sin(value), np.cos(value), 0],
+                                  [0,0,1]])
+        offset = np.identity(4)
+        offset[:3,3] = self.offset
+        tmp = np.identity(4)
+        tmp[:3,:3] = R
+
+        return offset @ T @ tmp
+    
+    def getMatrix(self,f):
+        return self.matrix[f]
+
 def getAngle(a):
     if a<0:
         return 360+a
@@ -46,6 +90,14 @@ def getAngle(a):
 
 def drawFrame():
     glBegin(GL_LINES)
+    glColor3ub(180,180,180)
+    glVertex3fv(np.array([0.,0.,0.]))
+    glVertex3fv(np.array([.1,0.,0.]))
+    glVertex3fv(np.array([0.,0.,0.]))
+    glVertex3fv(np.array([0.,.1,0.]))
+    glVertex3fv(np.array([0.,0.,0]))
+    glVertex3fv(np.array([0.,0.,.1]))
+
     glColor3ub(102,102,102)
     for i in range(-60,60):
         glVertex3fv(np.array([0.5*i,0.,1000.]))
@@ -62,11 +114,19 @@ def drawBvh(joint):
         glVertex3fv(joint.getGlobalPos())
         glVertex3fv(child[i].getGlobalPos())
         drawBvh(child[i])
-    return
-    
 
-def render():
-    global isOrtho
+def animateBvh(joint,f):
+    if joint.getName() == "end": return
+    
+    child = joint.getChild()
+
+    for i in range(0,len(child)):
+        glVertex3fv((joint.getMatrix(f) @ np.array([0.,0.,0.,1.])) [:-1] )
+        glVertex3fv((child[i].getMatrix(f) @ np.array([0.,0.,0.,1.])) [:-1])
+        animateBvh(child[i],f)
+    
+def render(f):
+    global isOrtho, isAnimating
     global tpoint
     global elev, azim
     global v, u
@@ -102,15 +162,17 @@ def render():
     if root != None:
         glBegin(GL_LINES)
         glColor3ub(0,0,255)
-        drawBvh(root)
+        if not isAnimating: drawBvh(root)
+        else: animateBvh(root,f)
         glEnd()
 
 def key_callback(window, key, scancode, action, modes):
-    global isOrtho
+    global isOrtho,isAnimating
     if key==glfw.KEY_V:
         if action == glfw.PRESS:
             isOrtho = not isOrtho
-        
+    if key==glfw.KEY_SPACE and action==glfw.PRESS:
+        isAnimating = not isAnimating
        
 def cursor_callback(window, xpos, ypos_):
     global leftPressed, rightPressed
@@ -156,7 +218,7 @@ def scroll_callback(window, xoffset, yoffset):
     d -= yoffset
 
 def drop_callback(window,paths):
-    global root, ftime, start
+    global root, ftime, start, fnum
     root=None
     curparent = None
     tmp = None
@@ -164,6 +226,7 @@ def drop_callback(window,paths):
     offset=[]
     chan=[]
     isEnd=False
+    jnum=0
     
     f = open(paths[0])
     
@@ -173,17 +236,19 @@ def drop_callback(window,paths):
         s=line.split()
         if s[0] == "MOTION":
             s = f.readline().split()
-            frames = int(s[1])
+            fnum = int(s[1])
             s = f.readline().split()
             ftime = float(s[2])
 
-            for i in range(0,frames):
+            for i in range(0,fnum):
                 s = f.readline().split()
                 start=0
                 setChanValues(s,root)
+            setMat(root,fnum)
             break;
         elif s[0] == "ROOT" or s[0] == "JOINT":
             name = s[1]
+            jnum+=1
         elif s[0] == '{':
           pass
         elif s[0] == "OFFSET":
@@ -205,18 +270,25 @@ def drop_callback(window,paths):
             curparent = curparent.getParent()
         elif s[0] == "End":
             isEnd=True
+            
+    name = paths[0].split('\\')
+    print("File name: ", name[len(name)-1])
+    print("Number of frames: ", fnum)
+    print("FPS: ", 1/ftime)
+    print("Number of joints: ", jnum)
+    printAllJoint(root)
         
         
 def setChanValues(s,joint):
     global start
 
-    if joint.getName == "end":
+    if joint.getName() == "end":
         return
     
     tmp = []
-    for i in range(start,joint.getChanNum()):
-        tmp.append(float(s[i]))
-    joint.setChanValue(tmp)
+    for i in range(0,joint.getChanNum()):
+        tmp.append(float(s[i+start]))
+    joint.addChanValue(np.array(tmp))
     
     start = start + joint.getChanNum()
     child = joint.getChild()
@@ -224,16 +296,32 @@ def setChanValues(s,joint):
     for i in range(0,len(child)):
         setChanValues(s,child[i])
    
-        
+def printAllJoint(joint):
+    print(joint.getName())
+    child = joint.getChild()
+    if child[0].getName() == "end":
+        return
+    for i in range(0,len(child)):
+        printAllJoint(child[i])
+
+def setMat(joint,fnum):    
+    joint.setMat(fnum)
+    print(joint.getMatrix(0))
+    child = joint.getChild()
+    for i in range(0,len(child)):
+        setMat(child[i],fnum)
+    if joint.getName() == "end": return
+
 
 def main():
     global leftPressed, rightPressed
-    global isOrtho
+    global isOrtho, isAnimating
     global elev, azim
     global d
     global tpoint
     global root
-    
+    global fnum
+
     if not glfw.init():
         return
     window = glfw.create_window(800,800,'BVH Viewer', None,None)
@@ -244,11 +332,14 @@ def main():
     leftPressed = False
     rightPressed = False
     isOrtho=False
+    isAnimating=False
     elev = 35.264
     azim = 45
     d = 5.196
     tpoint = np.array([0.,0.,0.])
     root=None
+    fnum=0
+    f=0
 
     glfw.set_key_callback(window,key_callback)
     glfw.set_cursor_pos_callback(window, cursor_callback)
@@ -260,7 +351,13 @@ def main():
 
     while not glfw.window_should_close(window):
         glfw.poll_events()
-        render()
+        glfw.swap_interval(1)
+        if fnum==0:
+            f=0
+        elif fnum==f:
+            f=0
+        render(f)
+        f+=1
         glfw.swap_buffers(window)
 
     glfw.terminate()
