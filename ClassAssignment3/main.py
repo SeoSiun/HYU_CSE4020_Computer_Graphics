@@ -12,6 +12,11 @@ class Joint:
         self.parent = parent
         self.chanValue = []
         self.matrix=[]
+        ############
+        self.R =[]
+        self.T=[]
+        self.rate=0
+        ##############
         posmat = np.identity(4)
         posmat[:3,3] = self.offset
         if self.parent!=None:
@@ -39,24 +44,37 @@ class Joint:
     def getPosmat(self):
         return self.posmat
 
-    def setMat(self,fnum,rate):
+    def getOffset(self):
+        return self.offset*self.rate
+
+    def getR(self,f):
+        return self.R[f]
+
+    def getT(self,f):
+        return self.T[f]
+
+    def setRate(self,rate):
+        self.rate=rate
+        
+    def setMat(self,fnum):
         for i in range(0,fnum):
             if self.parent!=None:
-                self.matrix.append(self.parent.matrix[i] @ self.getMat(i,rate))
-            else: self.matrix.append(self.getMat(i,rate))
+                self.matrix.append(self.parent.matrix[i] @ self.getMat(i))
+            else:
+                self.matrix.append(self.getMat(i))
 
-    def getMat(self,f,rate):
+    def getMat(self,f):
         T=np.identity(4)
         R=np.identity(3)
 
         for i,chan in enumerate(self.channel):
             value = self.chanValue[f][i]
             if chan=="XPOSITION" or chan =="Xposition":
-                T[0,3]=value*rate
+                T[0,3]=value*self.rate
             elif chan=="YPOSITION" or chan =="Yposition":
-                T[1,3]=value*rate
+                T[1,3]=value*self.rate
             elif chan=="ZPOSITION" or chan =="Zposition":
-                T[2,3]=value*rate
+                T[2,3]=value*self.rate
             elif chan=="XROTATION" or chan =="Xrotation":
                 value = np.radians(value)
                 R = R @ np.array([[1,0,0],
@@ -76,6 +94,11 @@ class Joint:
         offset[:3,3] = self.offset
         tmp = np.identity(4)
         tmp[:3,:3] = R
+
+        #################
+        self.R.append(tmp)
+        self.T.append(T)
+        #################
 
         return offset @ T @ tmp
     
@@ -112,58 +135,94 @@ def drawBvh(joint):
     if len(joint.getChild())==0 or joint.getName() == "end": return
     
     child = joint.getChild()
+    offset = joint.getOffset()
+
+    glPushMatrix()
+    glTranslatef(offset[0],offset[1],offset[2])
     for i in range(0,len(child)):
-     #   glVertex3fv((joint.getPosmat()@np.array([0.,0.,0.,1.]))[:-1])
-     #   glVertex3fv((child[i].getPosmat()@np.array([0.,0.,0.,1.])) [:-1])
-        drawCube(joint.getPosmat(),child[i].getPosmat())
+        # line   
+        #glVertex3fv((joint.getPosmat()@np.array([0.,0.,0.,1.]))[:-1])
+        #glVertex3fv((child[i].getPosmat()@np.array([0.,0.,0.,1.])) [:-1])
+
+        drawCube(child[i].getOffset())
         drawBvh(child[i])
+    glPopMatrix()
 
 def animateBvh(joint,f):
     if len(joint.getChild())==0 or joint.getName() == "end": return
     
     child = joint.getChild()
+    offset = np.identity(4)
+    offset[:3,3] = joint.getOffset()
+
+    glPushMatrix()
+    glMultMatrixf((offset@joint.getT(f)@joint.getR(f)).T)
 
     for i in range(0,len(child)):
-      #  glVertex3fv((joint.getMatrix(f) @ np.array([0.,0.,0.,1.])) [:-1] )
-      #  glVertex3fv((child[i].getMatrix(f) @ np.array([0.,0.,0.,1.])) [:-1])
-        drawCube(joint.getMatrix(f),child[i].getMatrix(f))
+        #line
+        #glVertex3fv((joint.getMatrix(f) @ np.array([0.,0.,0.,1.])) [:-1] )
+        #glVertex3fv((child[i].getMatrix(f) @ np.array([0.,0.,0.,1.])) [:-1])
+
+        # cube
+        drawCube(child[i].getOffset())
         animateBvh(child[i],f)
+        
+    glPopMatrix()
 
-def drawCube(p,c):
-    glVertex3fv((p @ np.array([.02,.02,-.02,1.])) [:-1] )
-    glVertex3fv((p @ np.array([-.02,.02,-.02,1.])) [:-1] )
-    glVertex3fv((c @ np.array([-.02,.02,.02,1.])) [:-1] )
-    glVertex3fv((c @ np.array([.02,.02,.02,1.])) [:-1] )
-
-    glVertex3fv((p @ np.array([.02,-.02,.02,1.])) [:-1] )
-    glVertex3fv((p @ np.array([-.02,-.02,.02,1.])) [:-1] )
-    glVertex3fv((c @ np.array([-.02,-.02,-.02,1.])) [:-1] )
-    glVertex3fv((c @ np.array([.02,-.02,-.02,1.])) [:-1] )
-
-    glVertex3fv((p @ np.array([.02,.02,.02,1.])) [:-1] )
-    glVertex3fv((p @ np.array([-.02,.02,.02,1.])) [:-1] )
-    glVertex3fv((c @ np.array([-.02,-.02,.02,1.])) [:-1] )
-    glVertex3fv((c @ np.array([.02,-.02,.02,1.])) [:-1] )
-
-    glVertex3fv((p @ np.array([.02,-.02,-.02,1.])) [:-1] )
-    glVertex3fv((p @ np.array([-.02,-.02,-.02,1.])) [:-1] )
-    glVertex3fv((c @ np.array([-.02,.02,-.02,1.])) [:-1] )
-    glVertex3fv((c @ np.array([.02,.02,-.02,1.])) [:-1] )
-
-    glVertex3fv((p @ np.array([-.02,.02,.02,1.])) [:-1] )
-    glVertex3fv((p @ np.array([-.02,.02,-.02,1.])) [:-1] )
-    glVertex3fv((c @ np.array([-.02,-.02,-.02,1.])) [:-1] )
-    glVertex3fv((c @ np.array([-.02,-.02,.02,1.])) [:-1] )
-
-    glVertex3fv((p @ np.array([.02,.02,-.02,1.])) [:-1] )
-    glVertex3fv((p @ np.array([.02,.02,.02,1.])) [:-1] )
-    glVertex3fv((c @ np.array([.02,-.02,.02,1.])) [:-1] )
-    glVertex3fv((c @ np.array([.02,-.02,-.02,1.])) [:-1] )
-
-
-
-
+def drawCube(offset):
+    global isAnimating
+    y=np.array([0.,1.,0.])
+    cos = np.dot(y,offset) / (np.sqrt(np.dot(offset, offset)) * np.sqrt(np.dot(y, y)))
+    cross=np.cross(y,offset)
     
+    glPushMatrix()
+    glRotatef(np.degrees(np.arccos(cos)), cross[0],cross[1],cross[2])
+    c = np.identity(4)
+    c[1,3] = np.sqrt(np.dot(offset, offset))
+
+    glBegin(GL_QUADS)
+    glColor3ub(0,0,255)
+
+    glNormal3f(0,-1,0)
+    glVertex3fv(np.array([.02,.0,.02]))
+    glVertex3fv(np.array([.02,.0,-.02]))
+    glVertex3fv(np.array([-.02,.0,-.02]))
+    glVertex3fv(np.array([-.02,.0,.02]))
+
+    glNormal3f(1,0,0)
+    glVertex3fv(np.array([.02,.0,.02]))
+    glVertex3fv(np.array([.02,.0,-.02]))
+    glVertex3fv((c @ np.array([.02,.0,-.02,1.])) [:-1])
+    glVertex3fv((c @ np.array([.02,.0,.02,1.])) [:-1])
+
+    glNormal3f(0,0,-1)
+    glVertex3fv(np.array([.02,.0,-.02]))
+    glVertex3fv( np.array([-.02,.0,-.02]))
+    glVertex3fv((c @ np.array([-.02,.0,-.02,1.])) [:-1])
+    glVertex3fv((c @ np.array([.02,.0,-.02,1.])) [:-1])
+
+    glNormal3f(-1,0,0)
+    glVertex3fv(np.array([-.02,.0,-.02]))
+    glVertex3fv(np.array([-.02,.0,.02]))
+    glVertex3fv((c @  np.array([-.02,.0,.02,1.])) [:-1])
+    glVertex3fv((c @ np.array([-.02,.0,-.02,1.])) [:-1])
+
+    glNormal3f(0,0,1)
+    glVertex3fv(np.array([-.02,.0,.02]))
+    glVertex3fv(np.array([.02,.0,.02]))
+    glVertex3fv((c @  np.array([.02,.0,.02,1.])) [:-1])
+    glVertex3fv((c @ np.array([-.02,.0,.02,1.])) [:-1])
+
+    glNormal3f(0,1,0)
+    glVertex3fv((c @ np.array([.02,.0,.02,1.])) [:-1])
+    glVertex3fv((c @ np.array([.02,.0,-.02,1.])) [:-1])
+    glVertex3fv((c @ np.array([-.02,.0,-.02,1.])) [:-1])
+    glVertex3fv((c @ np.array([-.02,.0,.02,1.])) [:-1])
+
+    glEnd()
+
+    glPopMatrix()
+
     
 def render(f):
     global isOrtho, isAnimating
@@ -203,28 +262,36 @@ def render(f):
 
     glEnable(GL_LIGHTING)
     glEnable(GL_LIGHT0)
+    glEnable(GL_LIGHT1)
+    
     lightPos = (10.,10.,0.,0.)
     glLightfv(GL_LIGHT0,GL_POSITION,lightPos)
 
-    lightColor = (1.,1.,1.,1.)
-    ambientLightColor = (.1,.1,.1,1.)
+    lightColor = (0.,0.,1.,1.)
+    ambientLightColor = (.0,.0,.1,1.)
     glLightfv(GL_LIGHT0,GL_DIFFUSE, lightColor)
     glLightfv(GL_LIGHT0,GL_SPECULAR, lightColor)
     glLightfv(GL_LIGHT0,GL_AMBIENT, ambientLightColor)
 
-    objectColor = (0.,0.,1.,1.)
-    specularObjectColor = (0.,0.,1.,1.)
+    lightPos = (0.,0.,10.,0.)
+    glLightfv(GL_LIGHT1,GL_POSITION,lightPos)
+
+    lightColor = (1.,0.,0.,1.)
+    ambientLightColor = (.1,.0,.0,1.)
+    glLightfv(GL_LIGHT1,GL_DIFFUSE, lightColor)
+    glLightfv(GL_LIGHT1,GL_SPECULAR, lightColor)
+    glLightfv(GL_LIGHT1,GL_AMBIENT, ambientLightColor)
+
+    objectColor = (1.,1.,1.,1.)
+    specularObjectColor = (.1,.1,.1,1.)
     glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE,objectColor)
     glMaterialfv(GL_FRONT, GL_SHININESS,10)
     glMaterialfv(GL_FRONT, GL_SPECULAR,specularObjectColor)
         
     
     if root != None:
-        glBegin(GL_QUADS)
-        glColor3ub(0,0,255)
         if not isAnimating: drawBvh(root)
         else: animateBvh(root,f)
-        glEnd()
 
 def key_callback(window, key, scancode, action, modes):
     global isOrtho,isAnimating
@@ -232,8 +299,7 @@ def key_callback(window, key, scancode, action, modes):
         if action == glfw.PRESS:
             isOrtho = not isOrtho
     if key==glfw.KEY_SPACE and action==glfw.PRESS:
-        isAnimating = True
-        print("animate")
+        isAnimating = not isAnimating
        
 def cursor_callback(window, xpos, ypos_):
     global leftPressed, rightPressed
@@ -289,8 +355,7 @@ def drop_callback(window,paths):
     isEnd=False
     jnum=0
     start=0
-    rate=1
-    r=0
+    m=0
     
     f = open(paths[0])
     
@@ -308,7 +373,8 @@ def drop_callback(window,paths):
                 s = f.readline().split()
                 start=0
                 setChanValues(s,root)
-            setMat(root,fnum,rate)
+            if m>1: setMat(root,fnum,1/m)
+            else: setMat(root,fnum,1)
             break;
         elif s[0] == "ROOT" or s[0] == "JOINT":
             name = s[1]
@@ -316,15 +382,11 @@ def drop_callback(window,paths):
         elif s[0] == '{':
           pass
         elif s[0] == "OFFSET":
-            if r==0 and (float(s[1])!=0 or float(s[2])!=0 or float(s[3])!=0):
-                r=1
-                m=abs(float(s[1]))
+            if float(s[1])!=0 or float(s[2])!=0 or float(s[3])!=0:
+                if m<abs(float(s[1])): m=abs(float(s[1]))
                 if m<abs(float(s[2])): m=abs(float(s[2]))
-                if m<abs(float(s[3])): m=abs(float(s[3]))
-                if m>1:
-                    rate = 1/m
-                    print(rate)
-            offset = rate*np.array((float(s[1]), float(s[2]), float(s[3])))
+                if m<abs(float(s[3])): m=abs(float(s[3]))       
+            offset = np.array((float(s[1]), float(s[2]), float(s[3])))
             if isEnd:
                 tmp = Joint("end",offset,[],curparent)
                 curparent.addChild(tmp)
@@ -376,8 +438,9 @@ def printAllJoint(joint):
     for i in range(0,len(child)):
         printAllJoint(child[i])
 
-def setMat(joint,fnum,rate):    
-    joint.setMat(fnum,rate)
+def setMat(joint,fnum,rate):
+    joint.setRate(rate)
+    joint.setMat(fnum)
     child = joint.getChild()
     for i in range(0,len(child)):
         setMat(child[i],fnum,rate)
