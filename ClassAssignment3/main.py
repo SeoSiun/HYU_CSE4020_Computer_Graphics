@@ -12,13 +12,12 @@ class Joint:
         self.parent = parent
         self.chanValue = []
         self.matrix=[]
-        ############
+        self.arr=[]
         self.R =[]
         self.T=[]
         self.rate=0
-        ##############
         posmat = np.identity(4)
-        posmat[:3,3] = self.offset
+        posmat[:3,3] = self.getOffset()
         if self.parent!=None:
             self.posmat=self.parent.posmat @ posmat
         else: self.posmat=posmat
@@ -52,6 +51,12 @@ class Joint:
 
     def getT(self,f):
         return self.T[f]
+
+    def getArr(self):
+        return self.arr
+
+    def setArr(self,arr):
+        self.arr = arr
 
     def setRate(self,rate):
         self.rate=rate
@@ -95,10 +100,8 @@ class Joint:
         tmp = np.identity(4)
         tmp[:3,:3] = R
 
-        #################
         self.R.append(tmp)
         self.T.append(T)
-        #################
 
         return offset @ T @ tmp
     
@@ -132,6 +135,7 @@ def drawFrame():
     glEnd()
 
 def drawBvh(joint):
+    global isOBJ
     if len(joint.getChild())==0 or joint.getName() == "end": return
     
     child = joint.getChild()
@@ -144,11 +148,16 @@ def drawBvh(joint):
         #glVertex3fv((joint.getPosmat()@np.array([0.,0.,0.,1.]))[:-1])
         #glVertex3fv((child[i].getPosmat()@np.array([0.,0.,0.,1.])) [:-1])
 
-        drawCube(child[i].getOffset())
+        # cube & obj
+        if not isOBJ: 
+            draw(child[i].getOffset(),[])
+        else:
+            draw(child[i].getOffset(),joint.getArr())
         drawBvh(child[i])
     glPopMatrix()
 
 def animateBvh(joint,f):
+    global isOBJ
     if len(joint.getChild())==0 or joint.getName() == "end": return
     
     child = joint.getChild()
@@ -163,66 +172,101 @@ def animateBvh(joint,f):
         #glVertex3fv((joint.getMatrix(f) @ np.array([0.,0.,0.,1.])) [:-1] )
         #glVertex3fv((child[i].getMatrix(f) @ np.array([0.,0.,0.,1.])) [:-1])
 
-        # cube
-        drawCube(child[i].getOffset())
+        # cube & obj
+        if not isOBJ:
+            draw(child[i].getOffset(),[])
+        else:
+            draw(child[i].getOffset(),joint.getArr())
         animateBvh(child[i],f)
         
     glPopMatrix()
 
-def drawCube(offset):
-    global isAnimating
+def draw(offset,varr):
+    global isOBJ
     y=np.array([0.,1.,0.])
     cos = np.dot(y,offset) / (np.sqrt(np.dot(offset, offset)) * np.sqrt(np.dot(y, y)))
     cross=np.cross(y,offset)
     
     glPushMatrix()
     glRotatef(np.degrees(np.arccos(cos)), cross[0],cross[1],cross[2])
-    c = np.identity(4)
-    c[1,3] = np.sqrt(np.dot(offset, offset))
 
-    glBegin(GL_QUADS)
-    glColor3ub(0,0,255)
+    if isOBJ:
+        glScalef(.1,.1,.1)
+    else:
+        c = np.identity(4)
+        c[1,3] = np.sqrt(np.dot(offset, offset))*0.9
+        varr=setCubeArr(c)
 
-    glNormal3f(0,-1,0)
-    glVertex3fv(np.array([.02,.0,.02]))
-    glVertex3fv(np.array([.02,.0,-.02]))
-    glVertex3fv(np.array([-.02,.0,-.02]))
-    glVertex3fv(np.array([-.02,.0,.02]))
-
-    glNormal3f(1,0,0)
-    glVertex3fv(np.array([.02,.0,.02]))
-    glVertex3fv(np.array([.02,.0,-.02]))
-    glVertex3fv((c @ np.array([.02,.0,-.02,1.])) [:-1])
-    glVertex3fv((c @ np.array([.02,.0,.02,1.])) [:-1])
-
-    glNormal3f(0,0,-1)
-    glVertex3fv(np.array([.02,.0,-.02]))
-    glVertex3fv( np.array([-.02,.0,-.02]))
-    glVertex3fv((c @ np.array([-.02,.0,-.02,1.])) [:-1])
-    glVertex3fv((c @ np.array([.02,.0,-.02,1.])) [:-1])
-
-    glNormal3f(-1,0,0)
-    glVertex3fv(np.array([-.02,.0,-.02]))
-    glVertex3fv(np.array([-.02,.0,.02]))
-    glVertex3fv((c @  np.array([-.02,.0,.02,1.])) [:-1])
-    glVertex3fv((c @ np.array([-.02,.0,-.02,1.])) [:-1])
-
-    glNormal3f(0,0,1)
-    glVertex3fv(np.array([-.02,.0,.02]))
-    glVertex3fv(np.array([.02,.0,.02]))
-    glVertex3fv((c @  np.array([.02,.0,.02,1.])) [:-1])
-    glVertex3fv((c @ np.array([-.02,.0,.02,1.])) [:-1])
-
-    glNormal3f(0,1,0)
-    glVertex3fv((c @ np.array([.02,.0,.02,1.])) [:-1])
-    glVertex3fv((c @ np.array([.02,.0,-.02,1.])) [:-1])
-    glVertex3fv((c @ np.array([-.02,.0,-.02,1.])) [:-1])
-    glVertex3fv((c @ np.array([-.02,.0,.02,1.])) [:-1])
-
-    glEnd()
+    glEnableClientState(GL_VERTEX_ARRAY)
+    glEnableClientState(GL_NORMAL_ARRAY)
+    glNormalPointer(GL_FLOAT, 6*varr.itemsize,varr)
+    glVertexPointer(3,GL_FLOAT, 6*varr.itemsize,ctypes.c_void_p(varr.ctypes.data + 3*varr.itemsize))
+    if isOBJ:
+        glDrawArrays(GL_TRIANGLES,0,int(varr.size/6))
+    else:
+        glDrawArrays(GL_QUADS,0,int(varr.size/6))
 
     glPopMatrix()
+    
 
+def setCubeArr(c):
+    varr = np.array([
+        (0,-1,0),
+        (.03,.0,.03),
+        (0,-1,0),
+        (.03,.0,-.03),
+        (0,-1,0),
+        (-.03,.0,-.03),
+        (0,-1,0),
+        (-.03,.0,.03),
+
+        (1,0,0),
+        (.03,.0,.03),
+        (1,0,0),
+        (.03,.0,-.03),
+        (1,0,0),
+        (c @ np.array([.03,.0,-.03,1.]))[:-1],
+        (1,0,0),
+        (c @ np.array([.03,.0,.03,1.]))[:-1],
+
+        (0,0,-1),
+        (.03,.0,-.03),
+        (0,0,-1),
+        (-.03,.0,-.03),
+        (0,0,-1),
+        (c @ np.array([-.03,.0,-.03,1.]))[:-1],
+        (0,0,-1),
+        (c @ np.array([.03,.0,-.03,1.]))[:-1],
+
+        (-1,0,0),
+        (-.03,.0,-.03),
+        (-1,0,0),
+        (-.03,.0,.03),
+        (-1,0,0),
+        (c @np.array([-.03,.0,.03,1.])) [:-1],
+        (-1,0,0),
+        (c @np.array([-.03,.0,-.03,1.])) [:-1],
+
+        (0,0,1),
+        (-.03,.0,.03),
+        (0,0,1),
+        (.03,.0,.03),
+        (0,0,1),
+        (c @  np.array([.03,.0,.03,1.])) [:-1],
+        (0,0,1),
+        (c @ np.array([-.03,.0,.03,1.])) [:-1],
+
+        (0,1,0),
+        (c @ np.array([.03,.0,.03,1.])) [:-1],
+        (0,1,0),
+        (c @ np.array([.03,.0,-.03,1.])) [:-1],
+        (0,1,0),
+        (c @ np.array([-.03,.0,-.03,1.])) [:-1],
+        (0,1,0),
+        (c @ np.array([-.03,.0,.03,1.])) [:-1]
+        
+        ],'float32')
+    return varr
     
 def render(f):
     global isOrtho, isAnimating
@@ -345,7 +389,7 @@ def scroll_callback(window, xoffset, yoffset):
     d -= yoffset
 
 def drop_callback(window,paths):
-    global root, ftime, start, fnum
+    global root, ftime, start, fnum,isOBJ
     root=None
     curparent = None
     tmp = None
@@ -358,6 +402,11 @@ def drop_callback(window,paths):
     m=0
     
     f = open(paths[0])
+    name = paths[0].split('\\')
+    name = name[len(name)-1]
+    if name=="sample-walk.bvh" or name=="sample-spin.bvh":
+        isOBJ=True
+    else: isOBJ=False
     
     while True:
         line = f.readline()
@@ -405,8 +454,7 @@ def drop_callback(window,paths):
         elif s[0] == "End":
             isEnd=True
             
-    name = paths[0].split('\\')
-    print("File name: ", name[len(name)-1])
+    print("File name: ", name)
     print("Number of frames: ", fnum)
     print("FPS: ", 1/ftime)
     print("Number of joints: ", jnum)
@@ -439,6 +487,9 @@ def printAllJoint(joint):
         printAllJoint(child[i])
 
 def setMat(joint,fnum,rate):
+    global isOBJ
+    if isOBJ:
+        findArr(joint)
     joint.setRate(rate)
     joint.setMat(fnum)
     child = joint.getChild()
@@ -447,10 +498,91 @@ def setMat(joint,fnum,rate):
 
     if len(child)==0 or joint.getName() == "end": return
 
+def findArr(joint):
+    global arr
+    name = joint.getName()
+
+    if name == "Hips":
+        joint.setArr(arr[10])
+    elif name == "Spine":
+        joint.setArr(arr[13])
+    elif name == "Head":
+        joint.setArr(arr[14])
+    elif name == "RightArm":
+        joint.setArr(arr[12])
+    elif name == "RightForeArm":
+        joint.setArr(arr[11])
+    elif name == "RightHand":
+        joint.setArr(arr[6])
+    elif name == "LeftArm":
+        joint.setArr(arr[5])
+    elif name == "LeftForeArm":
+        joint.setArr(arr[4])
+    elif name == "LeftHand":
+        joint.setArr(arr[3])
+    elif name == "RightUpLeg":
+        joint.setArr(arr[9])
+    elif name == "RightLeg":
+        joint.setArr(arr[8])
+    elif name == "RightFoot":
+        joint.setArr(arr[7])
+    elif name == "LeftUpLeg":
+        joint.setArr(arr[2])
+    elif name == "LeftLeg":
+        joint.setArr(arr[1])
+    elif name == "LeftFoot":
+        joint.setArr(arr[0])
+        
+def parseOBJ():
+    global arr
+    arr=[]
+    vertex=[]
+    normal=[]
+    pairs=[]
+    
+    f=open("robot.obj")
+    
+    while True:
+        line = f.readline()
+        if not line: break
+        
+        s = line.split()
+
+        if s[0] == 'o' and len(pairs)!=0:
+            varr=makeVarr(normal,vertex,pairs)
+            arr.append(np.array(varr,'float32'))
+            pairs=[]
+        elif s[0] == 'v':
+            vertex.append(np.array((float(s[1]),float(s[2]),float(s[3]))))
+        elif s[0] == 'vn':
+            normal.append((float(s[1]),float(s[2]),float(s[3])))
+        elif s[0] == 'f':
+            pair = []
+            tmp=[]
+            for i in range(1,len(s)):
+                v,t,n = s[i].split('/')
+                pair.append((int(n)-1,int(v)-1))
+            pairs.append(np.array(pair))
+
+    varr=makeVarr(normal,vertex,pairs)
+    arr.append(np.array(varr,'float32'))
+
+def makeVarr(normal,vertex,pairs):
+    varr=[]
+    for pair in pairs:
+        for i in range(1,len(pair)-1):
+            varr.append(normal[pair[0,0]])
+            varr.append(vertex[pair[0,1]])
+            varr.append(normal[pair[i,0]])
+            varr.append(vertex[pair[i,1]])
+            varr.append(normal[pair[i+1,0]])
+            varr.append(vertex[pair[i+1,1]])          
+    return varr
+
 
 def main():
     global leftPressed, rightPressed
-    global isOrtho, isAnimating
+    global isOrtho, isAnimating,isOBJ
     global elev, azim
     global d
     global tpoint
@@ -475,6 +607,8 @@ def main():
     root=None
     fnum=0
     f=0
+    isOBJ=False
+    parseOBJ()
 
     glfw.set_key_callback(window,key_callback)
     glfw.set_cursor_pos_callback(window, cursor_callback)
