@@ -241,15 +241,6 @@ def render(f):
     if isOBJ:
         glEnable(GL_LIGHTING)
         glEnable(GL_LIGHT0)
-        
-        lightPos = (10.,10.,0.,0.)
-        glLightfv(GL_LIGHT0,GL_POSITION,lightPos)
-
-        lightColor = (0.,0.,1.,1.)
-        ambientLightColor = (.0,.0,.1,1.)
-        glLightfv(GL_LIGHT0,GL_DIFFUSE, lightColor)
-        glLightfv(GL_LIGHT0,GL_SPECULAR, lightColor)
-        glLightfv(GL_LIGHT0,GL_AMBIENT, ambientLightColor)
 
         lightPos = (0.,10.,10.,0.)
         glLightfv(GL_LIGHT0,GL_POSITION,lightPos)
@@ -294,8 +285,10 @@ def key_callback(window, key, scancode, action, modes):
         if action == glfw.PRESS:
             isOrtho = not isOrtho
     if key==glfw.KEY_SPACE and action==glfw.PRESS:
-        isAnimating = not isAnimating
-        f=0
+        if not isAnimating:
+            loadMotion()
+            isAnimating = True
+            f=0
        
 def cursor_callback(window, xpos, ypos_):
     global leftPressed, rightPressed
@@ -341,7 +334,7 @@ def scroll_callback(window, xoffset, yoffset):
     d -= yoffset
 
 def drop_callback(window,paths):
-    global root, ftime, start, fnum,isOBJ, isScale
+    global root, ftime, start, fnum,isOBJ, isScale, file, isAnimating
     root=None
     curparent = None
     tmp = None
@@ -351,8 +344,9 @@ def drop_callback(window,paths):
     isEnd=False
     jnum=0
     start=0
+    isAnimating=False
     
-    f = open(paths[0])
+    file = open(paths[0])
     name = paths[0].split('\\')
     name = name[len(name)-1]
     if name=="sample-walk.bvh" or name=="sample-spin.bvh":
@@ -363,20 +357,14 @@ def drop_callback(window,paths):
     else: isScale=False
     
     while True:
-        line = f.readline()
+        line = file.readline()
         
         s=line.split()
         if s[0] == "MOTION":
-            s = f.readline().split()
+            s = file.readline().split()
             fnum = int(s[1])
-            s = f.readline().split()
+            s = file.readline().split()
             ftime = float(s[2])
-
-            for i in range(0,fnum):
-                s = f.readline().split()
-                start=0
-                setChanValues(s,root)
-            setMat(root,fnum)
             break;
         elif s[0] == "ROOT" or s[0] == "JOINT":
             name = s[1]
@@ -402,13 +390,22 @@ def drop_callback(window,paths):
             curparent = curparent.getParent()
         elif s[0] == "End":
             isEnd=True
-            
+                        
     print("File name: ", name)
     print("Number of frames: ", fnum)
     print("FPS: ", 1/ftime)
     print("Number of joints: ", jnum)
     printAllJoint(root)
-        
+    
+
+def loadMotion():
+    global fnum,file,root,start
+
+    for i in range(0,fnum):
+        s = file.readline().split()
+        start=0
+        setChanValues(s,root)
+    setMat(root,fnum)
         
 def setChanValues(s,joint):
     global start
@@ -426,8 +423,18 @@ def setChanValues(s,joint):
     
     for i in range(0,len(child)):
         setChanValues(s,child[i])
-   
+
+def setMat(joint,fnum):
+    joint.setMat(fnum)
+    child = joint.getChild()
+    for i in range(0,len(child)):
+        setMat(child[i],fnum)
+    if len(child)==0 or joint.getName() == "end": return
+
 def printAllJoint(joint):
+    global isOBJ
+    if isOBJ:
+        findArr(joint)
     print(joint.getName())
     child = joint.getChild()
     if len(child) == 0 or child[0].getName() == "end":
@@ -435,59 +442,47 @@ def printAllJoint(joint):
     for i in range(0,len(child)):
         printAllJoint(child[i])
 
-def setMat(joint,fnum):
-    global isOBJ
-    if isOBJ:
-        findArr(joint)
-    joint.setMat(fnum)
-    child = joint.getChild()
-    for i in range(0,len(child)):
-        setMat(child[i],fnum)
-    if len(child)==0 or joint.getName() == "end": return
-
 def findArr(joint):
-    global arr
     name = joint.getName()
 
     if name == "Hips":
-        joint.setArr(arr[10])
+        joint.setArr(parseOBJ("hips.obj"))
     elif name == "Spine":
-        joint.setArr(arr[13])
+        joint.setArr(parseOBJ("spine.obj"))
     elif name == "Head":
-        joint.setArr(arr[14])
+        joint.setArr(parseOBJ("head.obj"))
     elif name == "RightArm":
-        joint.setArr(arr[12])
+        joint.setArr(parseOBJ("rightArm.obj"))
     elif name == "RightForeArm":
-        joint.setArr(arr[11])
+        joint.setArr(parseOBJ("rightForeArm.obj"))
     elif name == "RightHand":
-        joint.setArr(arr[6])
+        joint.setArr(parseOBJ("rightHand.obj"))
     elif name == "LeftArm":
-        joint.setArr(arr[5])
+        joint.setArr(parseOBJ("leftArm.obj"))
     elif name == "LeftForeArm":
-        joint.setArr(arr[4])
+        joint.setArr(parseOBJ("leftForeArm.obj"))
     elif name == "LeftHand":
-        joint.setArr(arr[3])
+        joint.setArr(parseOBJ("leftHand.obj"))
     elif name == "RightUpLeg":
-        joint.setArr(arr[9])
+        joint.setArr(parseOBJ("rightUpLeg.obj"))
     elif name == "RightLeg":
-        joint.setArr(arr[8])
+        joint.setArr(parseOBJ("rightLeg.obj"))
     elif name == "RightFoot":
-        joint.setArr(arr[7])
+        joint.setArr(parseOBJ("rightFoot.obj"))
     elif name == "LeftUpLeg":
-        joint.setArr(arr[2])
+        joint.setArr(parseOBJ("leftUpLeg.obj"))
     elif name == "LeftLeg":
-        joint.setArr(arr[1])
+        joint.setArr(parseOBJ("leftLeg.obj"))
     elif name == "LeftFoot":
-        joint.setArr(arr[0])
+        joint.setArr(parseOBJ("leftFoot.obj"))
         
-def parseOBJ():
-    global arr
+def parseOBJ(filename):
     arr=[]
     vertex=[]
     normal=[]
     pairs=[]
     
-    f=open("robot.obj")
+    f=open(filename)
     
     while True:
         line = f.readline()
@@ -495,11 +490,7 @@ def parseOBJ():
         
         s = line.split()
 
-        if s[0] == 'o' and len(pairs)!=0:
-            varr=makeVarr(normal,vertex,pairs)
-            arr.append(np.array(varr,'float32'))
-            pairs=[]
-        elif s[0] == 'v':
+        if s[0] == 'v':
             vertex.append(np.array((float(s[1]),float(s[2]),float(s[3]))))
         elif s[0] == 'vn':
             normal.append((float(s[1]),float(s[2]),float(s[3])))
@@ -512,7 +503,8 @@ def parseOBJ():
             pairs.append(np.array(pair))
 
     varr=makeVarr(normal,vertex,pairs)
-    arr.append(np.array(varr,'float32'))
+
+    return np.array(varr,'float32')
 
 def makeVarr(normal,vertex,pairs):
     varr=[]
@@ -556,7 +548,6 @@ def main():
     f=0
     isOBJ=False
     isScale=False
-    parseOBJ()
 
     glfw.set_key_callback(window,key_callback)
     glfw.set_cursor_pos_callback(window, cursor_callback)
