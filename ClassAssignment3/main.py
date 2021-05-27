@@ -15,7 +15,6 @@ class Joint:
         self.arr=[]
         self.R =[]
         self.T=[]
-        self.rate=0
         posmat = np.identity(4)
         posmat[:3,3] = self.getOffset()
         if self.parent!=None:
@@ -44,7 +43,7 @@ class Joint:
         return self.posmat
 
     def getOffset(self):
-        return self.offset*self.rate
+        return self.offset
 
     def getR(self,f):
         return self.R[f]
@@ -57,9 +56,6 @@ class Joint:
 
     def setArr(self,arr):
         self.arr = arr
-
-    def setRate(self,rate):
-        self.rate=rate
         
     def setMat(self,fnum):
         for i in range(0,fnum):
@@ -75,11 +71,11 @@ class Joint:
         for i,chan in enumerate(self.channel):
             value = self.chanValue[f][i]
             if chan=="XPOSITION" or chan =="Xposition":
-                T[0,3]=value*self.rate
+                T[0,3]=value
             elif chan=="YPOSITION" or chan =="Yposition":
-                T[1,3]=value*self.rate
+                T[1,3]=value
             elif chan=="ZPOSITION" or chan =="Zposition":
-                T[2,3]=value*self.rate
+                T[2,3]=value
             elif chan=="XROTATION" or chan =="Xrotation":
                 value = np.radians(value)
                 R = R @ np.array([[1,0,0],
@@ -135,7 +131,27 @@ def drawFrame():
     glEnd()
 
 def drawBvh(joint):
-    global isOBJ
+    if len(joint.getChild())==0 or joint.getName() == "end": return
+    
+    child = joint.getChild()
+
+    for i in range(0,len(child)):
+        glVertex3fv((joint.getPosmat()@np.array([0.,0.,0.,1.]))[:-1])
+        glVertex3fv((child[i].getPosmat()@np.array([0.,0.,0.,1.])) [:-1])
+        drawBvh(child[i])
+
+
+def animateBvh(joint,f):
+    if len(joint.getChild())==0 or joint.getName() == "end": return
+    
+    child = joint.getChild()
+
+    for i in range(0,len(child)):
+        glVertex3fv((joint.getMatrix(f) @ np.array([0.,0.,0.,1.])) [:-1] )
+        glVertex3fv((child[i].getMatrix(f) @ np.array([0.,0.,0.,1.])) [:-1])
+        animateBvh(child[i],f)
+
+def drawBvhWithOBJ(joint):
     if len(joint.getChild())==0 or joint.getName() == "end": return
     
     child = joint.getChild()
@@ -143,21 +159,13 @@ def drawBvh(joint):
 
     glPushMatrix()
     glTranslatef(offset[0],offset[1],offset[2])
+    
     for i in range(0,len(child)):
-        # line   
-        #glVertex3fv((joint.getPosmat()@np.array([0.,0.,0.,1.]))[:-1])
-        #glVertex3fv((child[i].getPosmat()@np.array([0.,0.,0.,1.])) [:-1])
-
-        # cube & obj
-        if not isOBJ: 
-            draw(child[i].getOffset(),[])
-        else:
-            draw(child[i].getOffset(),joint.getArr())
-        drawBvh(child[i])
+        drawOBJ(child[i].getOffset(),joint.getArr())
+        drawBvhWithOBJ(child[i])
     glPopMatrix()
 
-def animateBvh(joint,f):
-    global isOBJ
+def animateBvhWithOBJ(joint,f):
     if len(joint.getChild())==0 or joint.getName() == "end": return
     
     child = joint.getChild()
@@ -168,108 +176,29 @@ def animateBvh(joint,f):
     glMultMatrixf((offset@joint.getT(f)@joint.getR(f)).T)
 
     for i in range(0,len(child)):
-        #line
-        #glVertex3fv((joint.getMatrix(f) @ np.array([0.,0.,0.,1.])) [:-1] )
-        #glVertex3fv((child[i].getMatrix(f) @ np.array([0.,0.,0.,1.])) [:-1])
-
-        # cube & obj
-        if not isOBJ:
-            draw(child[i].getOffset(),[])
-        else:
-            draw(child[i].getOffset(),joint.getArr())
-        animateBvh(child[i],f)
-        
+        drawOBJ(child[i].getOffset(),joint.getArr())
+        animateBvhWithOBJ(child[i],f)
     glPopMatrix()
-
-def draw(offset,varr):
-    global isOBJ
+        
+def drawOBJ(offset,varr):
     y=np.array([0.,1.,0.])
     cos = np.dot(y,offset) / (np.sqrt(np.dot(offset, offset)) * np.sqrt(np.dot(y, y)))
     cross=np.cross(y,offset)
     
-    glPushMatrix()
+    glPushMatrix()   
     glRotatef(np.degrees(np.arccos(cos)), cross[0],cross[1],cross[2])
-
-    if isOBJ:
-        glScalef(.1,.1,.1)
-    else:
-        c = np.identity(4)
-        c[1,3] = np.sqrt(np.dot(offset, offset))*0.9
-        varr=setCubeArr(c)
+    glScalef(.1,.1,.1)
 
     glEnableClientState(GL_VERTEX_ARRAY)
     glEnableClientState(GL_NORMAL_ARRAY)
     glNormalPointer(GL_FLOAT, 6*varr.itemsize,varr)
     glVertexPointer(3,GL_FLOAT, 6*varr.itemsize,ctypes.c_void_p(varr.ctypes.data + 3*varr.itemsize))
-    if isOBJ:
-        glDrawArrays(GL_TRIANGLES,0,int(varr.size/6))
-    else:
-        glDrawArrays(GL_QUADS,0,int(varr.size/6))
+    glDrawArrays(GL_TRIANGLES,0,int(varr.size/6))
 
     glPopMatrix()
-    
 
-def setCubeArr(c):
-    varr = np.array([
-        (0,-1,0),
-        (.03,.0,.03),
-        (0,-1,0),
-        (.03,.0,-.03),
-        (0,-1,0),
-        (-.03,.0,-.03),
-        (0,-1,0),
-        (-.03,.0,.03),
-
-        (1,0,0),
-        (.03,.0,.03),
-        (1,0,0),
-        (.03,.0,-.03),
-        (1,0,0),
-        (c @ np.array([.03,.0,-.03,1.]))[:-1],
-        (1,0,0),
-        (c @ np.array([.03,.0,.03,1.]))[:-1],
-
-        (0,0,-1),
-        (.03,.0,-.03),
-        (0,0,-1),
-        (-.03,.0,-.03),
-        (0,0,-1),
-        (c @ np.array([-.03,.0,-.03,1.]))[:-1],
-        (0,0,-1),
-        (c @ np.array([.03,.0,-.03,1.]))[:-1],
-
-        (-1,0,0),
-        (-.03,.0,-.03),
-        (-1,0,0),
-        (-.03,.0,.03),
-        (-1,0,0),
-        (c @np.array([-.03,.0,.03,1.])) [:-1],
-        (-1,0,0),
-        (c @np.array([-.03,.0,-.03,1.])) [:-1],
-
-        (0,0,1),
-        (-.03,.0,.03),
-        (0,0,1),
-        (.03,.0,.03),
-        (0,0,1),
-        (c @  np.array([.03,.0,.03,1.])) [:-1],
-        (0,0,1),
-        (c @ np.array([-.03,.0,.03,1.])) [:-1],
-
-        (0,1,0),
-        (c @ np.array([.03,.0,.03,1.])) [:-1],
-        (0,1,0),
-        (c @ np.array([.03,.0,-.03,1.])) [:-1],
-        (0,1,0),
-        (c @ np.array([-.03,.0,-.03,1.])) [:-1],
-        (0,1,0),
-        (c @ np.array([-.03,.0,.03,1.])) [:-1]
-        
-        ],'float32')
-    return varr
-    
 def render(f):
-    global isOrtho, isAnimating
+    global isOrtho, isAnimating, isOBJ
     global tpoint
     global elev, azim
     global v, u
@@ -277,7 +206,12 @@ def render(f):
     
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
     glEnable(GL_DEPTH_TEST)
-    glPolygonMode( GL_FRONT_AND_BACK, GL_FILL )
+
+    if isOBJ:
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL )
+    else:
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE )
+        
     glLoadIdentity()
     
     if isOrtho:
@@ -304,46 +238,64 @@ def render(f):
     glDisable(GL_LIGHTING)
     drawFrame()
 
-    glEnable(GL_LIGHTING)
-    glEnable(GL_LIGHT0)
-    glEnable(GL_LIGHT1)
-    
-    lightPos = (10.,10.,0.,0.)
-    glLightfv(GL_LIGHT0,GL_POSITION,lightPos)
-
-    lightColor = (0.,0.,1.,1.)
-    ambientLightColor = (.0,.0,.1,1.)
-    glLightfv(GL_LIGHT0,GL_DIFFUSE, lightColor)
-    glLightfv(GL_LIGHT0,GL_SPECULAR, lightColor)
-    glLightfv(GL_LIGHT0,GL_AMBIENT, ambientLightColor)
-
-    lightPos = (0.,0.,10.,0.)
-    glLightfv(GL_LIGHT1,GL_POSITION,lightPos)
-
-    lightColor = (1.,0.,0.,1.)
-    ambientLightColor = (.1,.0,.0,1.)
-    glLightfv(GL_LIGHT1,GL_DIFFUSE, lightColor)
-    glLightfv(GL_LIGHT1,GL_SPECULAR, lightColor)
-    glLightfv(GL_LIGHT1,GL_AMBIENT, ambientLightColor)
-
-    objectColor = (1.,1.,1.,1.)
-    specularObjectColor = (.1,.1,.1,1.)
-    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE,objectColor)
-    glMaterialfv(GL_FRONT, GL_SHININESS,10)
-    glMaterialfv(GL_FRONT, GL_SPECULAR,specularObjectColor)
+    if isOBJ:
+        glEnable(GL_LIGHTING)
+        glEnable(GL_LIGHT0)
         
-    
-    if root != None:
-        if not isAnimating: drawBvh(root)
-        else: animateBvh(root,f)
+        lightPos = (10.,10.,0.,0.)
+        glLightfv(GL_LIGHT0,GL_POSITION,lightPos)
+
+        lightColor = (0.,0.,1.,1.)
+        ambientLightColor = (.0,.0,.1,1.)
+        glLightfv(GL_LIGHT0,GL_DIFFUSE, lightColor)
+        glLightfv(GL_LIGHT0,GL_SPECULAR, lightColor)
+        glLightfv(GL_LIGHT0,GL_AMBIENT, ambientLightColor)
+
+        lightPos = (0.,10.,10.,0.)
+        glLightfv(GL_LIGHT0,GL_POSITION,lightPos)
+
+        lightColor = (1.,1.,1.,1.)
+        ambientLightColor = (.1,.1,.1,1.)
+        glLightfv(GL_LIGHT0,GL_DIFFUSE, lightColor)
+        glLightfv(GL_LIGHT0,GL_SPECULAR, lightColor)
+        glLightfv(GL_LIGHT0,GL_AMBIENT, ambientLightColor)
+
+        objectColor = (.8,.8,.8,1.)
+        specularObjectColor = (.08,.08,.08,1.)
+        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE,objectColor)
+        glMaterialfv(GL_FRONT, GL_SHININESS,10)
+        glMaterialfv(GL_FRONT, GL_SPECULAR,specularObjectColor)
+        
+    if root != None:  
+        if isScale:
+            glPushMatrix()
+            glScalef(.05,.05,.05)
+            
+        if not isAnimating:
+            if not isOBJ:
+                glBegin(GL_LINES)
+                glColor(0,0,255)
+                drawBvh(root)
+                glEnd()
+            else: drawBvhWithOBJ(root)
+        else:
+            if not isOBJ:
+                glBegin(GL_LINES)
+                glColor(0,0,255)
+                animateBvh(root,f)
+                glEnd()
+            else: animateBvhWithOBJ(root,f)
+            
+        if isScale: glPopMatrix()
 
 def key_callback(window, key, scancode, action, modes):
-    global isOrtho,isAnimating
+    global isOrtho,isAnimating, f
     if key==glfw.KEY_V:
         if action == glfw.PRESS:
             isOrtho = not isOrtho
     if key==glfw.KEY_SPACE and action==glfw.PRESS:
         isAnimating = not isAnimating
+        f=0
        
 def cursor_callback(window, xpos, ypos_):
     global leftPressed, rightPressed
@@ -389,7 +341,7 @@ def scroll_callback(window, xoffset, yoffset):
     d -= yoffset
 
 def drop_callback(window,paths):
-    global root, ftime, start, fnum,isOBJ
+    global root, ftime, start, fnum,isOBJ, isScale
     root=None
     curparent = None
     tmp = None
@@ -399,7 +351,6 @@ def drop_callback(window,paths):
     isEnd=False
     jnum=0
     start=0
-    m=0
     
     f = open(paths[0])
     name = paths[0].split('\\')
@@ -407,6 +358,9 @@ def drop_callback(window,paths):
     if name=="sample-walk.bvh" or name=="sample-spin.bvh":
         isOBJ=True
     else: isOBJ=False
+    if name=="Sophie_Excited-01.bvh":
+        isScale=True
+    else: isScale=False
     
     while True:
         line = f.readline()
@@ -422,19 +376,14 @@ def drop_callback(window,paths):
                 s = f.readline().split()
                 start=0
                 setChanValues(s,root)
-            if m>1: setMat(root,fnum,1/m)
-            else: setMat(root,fnum,1)
+            setMat(root,fnum)
             break;
         elif s[0] == "ROOT" or s[0] == "JOINT":
             name = s[1]
             jnum+=1
         elif s[0] == '{':
           pass
-        elif s[0] == "OFFSET":
-            if float(s[1])!=0 or float(s[2])!=0 or float(s[3])!=0:
-                if m<abs(float(s[1])): m=abs(float(s[1]))
-                if m<abs(float(s[2])): m=abs(float(s[2]))
-                if m<abs(float(s[3])): m=abs(float(s[3]))       
+        elif s[0] == "OFFSET":      
             offset = np.array((float(s[1]), float(s[2]), float(s[3])))
             if isEnd:
                 tmp = Joint("end",offset,[],curparent)
@@ -486,16 +435,14 @@ def printAllJoint(joint):
     for i in range(0,len(child)):
         printAllJoint(child[i])
 
-def setMat(joint,fnum,rate):
+def setMat(joint,fnum):
     global isOBJ
     if isOBJ:
         findArr(joint)
-    joint.setRate(rate)
     joint.setMat(fnum)
     child = joint.getChild()
     for i in range(0,len(child)):
-        setMat(child[i],fnum,rate)
-
+        setMat(child[i],fnum)
     if len(child)==0 or joint.getName() == "end": return
 
 def findArr(joint):
@@ -582,12 +529,12 @@ def makeVarr(normal,vertex,pairs):
 
 def main():
     global leftPressed, rightPressed
-    global isOrtho, isAnimating,isOBJ
+    global isOrtho, isAnimating,isOBJ, isScale
     global elev, azim
     global d
     global tpoint
     global root
-    global fnum
+    global fnum, f
 
     if not glfw.init():
         return
@@ -608,6 +555,7 @@ def main():
     fnum=0
     f=0
     isOBJ=False
+    isScale=False
     parseOBJ()
 
     glfw.set_key_callback(window,key_callback)
