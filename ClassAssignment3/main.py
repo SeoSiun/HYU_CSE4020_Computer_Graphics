@@ -11,15 +11,9 @@ class Joint:
         self.offset = offset
         self.parent = parent
         self.chanValue = []
-        self.matrix=[]
         self.arr=[]
         self.R =[]
         self.T=[]
-        posmat = np.identity(4)
-        posmat[:3,3] = self.getOffset()
-        if self.parent!=None:
-            self.posmat=self.parent.posmat @ posmat
-        else: self.posmat=posmat
         
     def addChild(self,child):
         self.child.append(child)
@@ -39,17 +33,23 @@ class Joint:
     def getChild(self):
         return self.child
 
-    def getPosmat(self):
-        return self.posmat
-
     def getOffset(self):
         return self.offset
 
     def getR(self,f):
+        if f==-1:
+            return np.identity(4)
         return self.R[f]
 
     def getT(self,f):
+        if f==-1:
+            return np.identity(4)
         return self.T[f]
+
+    def getOffsetM(self):
+        offset = np.identity(4)
+        offset[:3,3] = self.offset
+        return offset
 
     def getArr(self):
         return self.arr
@@ -59,50 +59,36 @@ class Joint:
         
     def setMat(self,fnum):
         for i in range(0,fnum):
-            if self.parent!=None:
-                self.matrix.append(self.parent.matrix[i] @ self.getMat(i))
-            else:
-                self.matrix.append(self.getMat(i))
+            T=np.identity(4)
+            R=np.identity(3)
 
-    def getMat(self,f):
-        T=np.identity(4)
-        R=np.identity(3)
-
-        for i,chan in enumerate(self.channel):
-            value = self.chanValue[f][i]
-            if chan=="XPOSITION" or chan =="Xposition":
-                T[0,3]=value
-            elif chan=="YPOSITION" or chan =="Yposition":
-                T[1,3]=value
-            elif chan=="ZPOSITION" or chan =="Zposition":
-                T[2,3]=value
-            elif chan=="XROTATION" or chan =="Xrotation":
-                value = np.radians(value)
-                R = R @ np.array([[1,0,0],
-                                 [0, np.cos(value), -np.sin(value)],
-                                 [0, np.sin(value), np.cos(value)]])
-            elif chan=="YROTATION" or chan =="Yrotation":
-                value = np.radians(value)
-                R = R @ np.array([[np.cos(value), 0, np.sin(value)],
-                                  [0,1,0],
-                                  [-np.sin(value), 0, np.cos(value)]])
-            elif chan=="ZROTATION" or chan =="Zrotation":
-                value = np.radians(value)
-                R = R @ np.array([[np.cos(value), -np.sin(value), 0],
-                                  [np.sin(value), np.cos(value), 0],
-                                  [0,0,1]])
-        offset = np.identity(4)
-        offset[:3,3] = self.offset
-        tmp = np.identity(4)
-        tmp[:3,:3] = R
-
-        self.R.append(tmp)
-        self.T.append(T)
-
-        return offset @ T @ tmp
-    
-    def getMatrix(self,f):
-        return self.matrix[f]
+            for j,chan in enumerate(self.channel):
+                value = self.chanValue[i][j]
+                if chan=="XPOSITION" or chan =="Xposition":
+                    T[0,3]=value
+                elif chan=="YPOSITION" or chan =="Yposition":
+                    T[1,3]=value
+                elif chan=="ZPOSITION" or chan =="Zposition":
+                    T[2,3]=value
+                elif chan=="XROTATION" or chan =="Xrotation":
+                    value = np.radians(value)
+                    R = R @ np.array([[1,0,0],
+                                     [0, np.cos(value), -np.sin(value)],
+                                     [0, np.sin(value), np.cos(value)]])
+                elif chan=="YROTATION" or chan =="Yrotation":
+                    value = np.radians(value)
+                    R = R @ np.array([[np.cos(value), 0, np.sin(value)],
+                                      [0,1,0],
+                                      [-np.sin(value), 0, np.cos(value)]])
+                elif chan=="ZROTATION" or chan =="Zrotation":
+                    value = np.radians(value)
+                    R = R @ np.array([[np.cos(value), -np.sin(value), 0],
+                                      [np.sin(value), np.cos(value), 0],
+                                      [0,0,1]])
+            tmp = np.identity(4)
+            tmp[:3,:3] = R
+            self.R.append(tmp)
+            self.T.append(T)
 
 def getAngle(a):
     if a<0:
@@ -130,54 +116,26 @@ def drawFrame():
         glVertex3fv(np.array([-1000.,0.,0.5*i]))
     glEnd()
 
-def drawBvh(joint):
+def drawBvh(joint,f):
+    global isOBJ
     if len(joint.getChild())==0 or joint.getName() == "end": return
     
     child = joint.getChild()
-
-    for i in range(0,len(child)):
-        glVertex3fv((joint.getPosmat()@np.array([0.,0.,0.,1.]))[:-1])
-        glVertex3fv((child[i].getPosmat()@np.array([0.,0.,0.,1.])) [:-1])
-        drawBvh(child[i])
-
-
-def animateBvh(joint,f):
-    if len(joint.getChild())==0 or joint.getName() == "end": return
-    
-    child = joint.getChild()
-
-    for i in range(0,len(child)):
-        glVertex3fv((joint.getMatrix(f) @ np.array([0.,0.,0.,1.])) [:-1] )
-        glVertex3fv((child[i].getMatrix(f) @ np.array([0.,0.,0.,1.])) [:-1])
-        animateBvh(child[i],f)
-
-def drawBvhWithOBJ(joint):
-    if len(joint.getChild())==0 or joint.getName() == "end": return
-    
-    child = joint.getChild()
-    offset = joint.getOffset()
 
     glPushMatrix()
-    glTranslatef(offset[0],offset[1],offset[2])
-    
-    for i in range(0,len(child)):
-        drawOBJ(child[i].getOffset(),joint.getArr())
-        drawBvhWithOBJ(child[i])
-    glPopMatrix()
 
-def animateBvhWithOBJ(joint,f):
-    if len(joint.getChild())==0 or joint.getName() == "end": return
-    
-    child = joint.getChild()
-    offset = np.identity(4)
-    offset[:3,3] = joint.getOffset()
-
-    glPushMatrix()
-    glMultMatrixf((offset@joint.getT(f)@joint.getR(f)).T)
+    glMultMatrixf((joint.getOffsetM()@joint.getT(f)@joint.getR(f)).T)
 
     for i in range(0,len(child)):
-        drawOBJ(child[i].getOffset(),joint.getArr())
-        animateBvhWithOBJ(child[i],f)
+        if isOBJ:
+            drawOBJ(child[i].getOffset(),joint.getArr())
+        else:
+            glBegin(GL_LINES)
+            glColor(0,0,255)
+            glVertex3fv(np.array([0.,0.,0.,1.]) [:-1] )
+            glVertex3fv((child[i].getOffsetM() @ np.array([0.,0.,0.,1.])) [:-1] )
+            glEnd()
+        drawBvh(child[i],f)
     glPopMatrix()
         
 def drawOBJ(offset,varr):
@@ -195,7 +153,7 @@ def drawOBJ(offset,varr):
     glVertexPointer(3,GL_FLOAT, 6*varr.itemsize,ctypes.c_void_p(varr.ctypes.data + 3*varr.itemsize))
     glDrawArrays(GL_TRIANGLES,0,int(varr.size/6))
 
-    glPopMatrix()
+    glPopMatrix() 
 
 def render(f):
     global isOrtho, isAnimating, isOBJ
@@ -263,19 +221,9 @@ def render(f):
             glScalef(.05,.05,.05)
             
         if not isAnimating:
-            if not isOBJ:
-                glBegin(GL_LINES)
-                glColor(0,0,255)
-                drawBvh(root)
-                glEnd()
-            else: drawBvhWithOBJ(root)
+            drawBvh(root,-1)
         else:
-            if not isOBJ:
-                glBegin(GL_LINES)
-                glColor(0,0,255)
-                animateBvh(root,f)
-                glEnd()
-            else: animateBvhWithOBJ(root,f)
+            drawBvh(root,f)
             
         if isScale: glPopMatrix()
 
