@@ -51,11 +51,11 @@ class Joint:
         offset[:3,3] = self.offset
         return offset
 
-    def getArr(self):
-        return self.arr
+    def getArr(self,i):
+        return self.arr[i]
 
-    def setArr(self,arr):
-        self.arr = arr
+    def addArr(self,arr):
+        self.arr.append(arr)
         
     def setMat(self,fnum):
         for i in range(0,fnum):
@@ -128,10 +128,10 @@ def drawBvh(joint,f):
 
     for i in range(0,len(child)):
         if isOBJ:
-            drawOBJ(child[i].getOffset(),joint.getArr())
+            drawOBJ(child[i].getOffset(),joint.getArr(i))
         else:
             glBegin(GL_LINES)
-            glColor(0,0,255)
+            glColor(255,255,255)
             glVertex3fv(np.array([0.,0.,0.,1.]) [:-1] )
             glVertex3fv((child[i].getOffsetM() @ np.array([0.,0.,0.,1.])) [:-1] )
             glEnd()
@@ -199,15 +199,35 @@ def render(f):
     if isOBJ:
         glEnable(GL_LIGHTING)
         glEnable(GL_LIGHT0)
+        glEnable(GL_LIGHT1)
+        glEnable(GL_LIGHT2)
 
-        lightPos = (0.,10.,10.,0.)
+        lightPos = (10.,10.,10.,0.)
         glLightfv(GL_LIGHT0,GL_POSITION,lightPos)
 
-        lightColor = (1.,1.,1.,1.)
-        ambientLightColor = (.1,.1,.1,1.)
+        lightColor = (1.,0.,0.,1.)
+        ambientLightColor = (.1,.0,.0,1.)
         glLightfv(GL_LIGHT0,GL_DIFFUSE, lightColor)
         glLightfv(GL_LIGHT0,GL_SPECULAR, lightColor)
         glLightfv(GL_LIGHT0,GL_AMBIENT, ambientLightColor)
+
+        lightPos = (-10.,10.,-10.,0.)
+        glLightfv(GL_LIGHT1,GL_POSITION,lightPos)
+
+        lightColor = (0.,1.,0.,1.)
+        ambientLightColor = (.0,.1,.0,1.)
+        glLightfv(GL_LIGHT1,GL_DIFFUSE, lightColor)
+        glLightfv(GL_LIGHT1,GL_SPECULAR, lightColor)
+        glLightfv(GL_LIGHT1,GL_AMBIENT, ambientLightColor)
+
+        lightPos = (10.,10.,-10.,0.)
+        glLightfv(GL_LIGHT2,GL_POSITION,lightPos)
+
+        lightColor = (0.,0.,1.,1.)
+        ambientLightColor = (.0,.0,.1,1.)
+        glLightfv(GL_LIGHT2,GL_DIFFUSE, lightColor)
+        glLightfv(GL_LIGHT2,GL_SPECULAR, lightColor)
+        glLightfv(GL_LIGHT2,GL_AMBIENT, ambientLightColor)
 
         objectColor = (.8,.8,.8,1.)
         specularObjectColor = (.08,.08,.08,1.)
@@ -394,35 +414,39 @@ def findArr(joint):
     name = joint.getName()
 
     if name == "Hips":
-        joint.setArr(parseOBJ("hips.obj"))
+        joint.addArr(parseOBJ("hips.obj"))
+        joint.addArr(parseOBJ("rightHipLeg.obj"))
+        joint.addArr(parseOBJ("leftHipLeg.obj"))
     elif name == "Spine":
-        joint.setArr(parseOBJ("spine.obj"))
+        joint.addArr(parseOBJ("spine.obj"))
+        joint.addArr(parseOBJ("rightSpineArm.obj"))
+        joint.addArr(parseOBJ("leftSpineArm.obj"))
     elif name == "Head":
-        joint.setArr(parseOBJ("head.obj"))
+        joint.addArr(parseOBJ("head.obj"))
     elif name == "RightArm":
-        joint.setArr(parseOBJ("rightArm.obj"))
+        joint.addArr(parseOBJ("rightArm.obj"))
     elif name == "RightForeArm":
-        joint.setArr(parseOBJ("rightForeArm.obj"))
+        joint.addArr(parseOBJ("rightForeArm.obj"))
     elif name == "RightHand":
-        joint.setArr(parseOBJ("rightHand.obj"))
+        joint.addArr(parseOBJ("rightHand.obj"))
     elif name == "LeftArm":
-        joint.setArr(parseOBJ("leftArm.obj"))
+        joint.addArr(parseOBJ("leftArm.obj"))
     elif name == "LeftForeArm":
-        joint.setArr(parseOBJ("leftForeArm.obj"))
+        joint.addArr(parseOBJ("leftForeArm.obj"))
     elif name == "LeftHand":
-        joint.setArr(parseOBJ("leftHand.obj"))
+        joint.addArr(parseOBJ("leftHand.obj"))
     elif name == "RightUpLeg":
-        joint.setArr(parseOBJ("rightUpLeg.obj"))
+        joint.addArr(parseOBJ("rightUpLeg.obj"))
     elif name == "RightLeg":
-        joint.setArr(parseOBJ("rightLeg.obj"))
+        joint.addArr(parseOBJ("rightLeg.obj"))
     elif name == "RightFoot":
-        joint.setArr(parseOBJ("rightFoot.obj"))
+        joint.addArr(parseOBJ("rightFoot.obj"))
     elif name == "LeftUpLeg":
-        joint.setArr(parseOBJ("leftUpLeg.obj"))
+        joint.addArr(parseOBJ("leftUpLeg.obj"))
     elif name == "LeftLeg":
-        joint.setArr(parseOBJ("leftLeg.obj"))
+        joint.addArr(parseOBJ("leftLeg.obj"))
     elif name == "LeftFoot":
-        joint.setArr(parseOBJ("leftFoot.obj"))
+        joint.addArr(parseOBJ("leftFoot.obj"))
         
 def parseOBJ(filename):
     arr=[]
