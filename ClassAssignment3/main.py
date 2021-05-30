@@ -528,10 +528,10 @@ def main():
     glfw.set_drop_callback(window,drop_callback)
     
     glfw.make_context_current(window)
-
+    glfw.swap_interval(1)
     while not glfw.window_should_close(window):
         glfw.poll_events()
-        glfw.swap_interval(1)
+        
         if fnum==f:
             f=0
         render(f)
